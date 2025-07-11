@@ -1,0 +1,1056 @@
+class ASReportServices
+{
+    
+    [
+        AifCollectionTypeAttribute('company', Types::String),
+        AifCollectionTypeAttribute('stores', Types::AnyType),
+        AifCollectionTypeAttribute('fromDate',Types::Date),
+        AifCollectionTypeAttribute('toDate',Types::Date),
+    AifCollectionTypeAttribute('return', Types::AnyType)
+]
+    public System.IO.MemoryStream getCashAccounting(str company,List stores,TransDate fromDate,TransDate toDate)
+    {
+        System.IO.MemoryStream stream = new System.IO.MemoryStream();
+        
+        changecompany(company)
+        {
+            Args                            args;
+            Filename                        fileName;
+            SrsReportRunController          controller = new SrsReportRunController();
+            CFZDailyCashAccountigContract   contract = new CFZDailyCashAccountigContract();
+            SRSPrintDestinationSettings     settings;
+            System.Byte[]                   reportBytes = new System.Byte[0]();
+            SRSProxy                        srsProxy;
+            SRSReportRunService             srsReportRunService = new SRSReportRunService();
+            Microsoft.Dynamics.AX.Framework.Reporting.Shared.ReportingService.ParameterValue[] parameterValueArray;
+            Map                             reportParametersMap;
+            SRSReportExecutionInfo          executionInfo = new SRSReportExecutionInfo();
+            RetailChannelTable retailChannelTable;
+            RetailTerminalTable retailTerminalTable;
+            args = new Args();
+            fileName ='Cash Accounting.pdf';
+            ListIterator store_iterator=new ListIterator(stores);
+            List terminalList = new List(Types::String);
+           
+            while (store_iterator.more())
+            {
+                str storesId=store_iterator.value();
+                if(storesId)
+                {
+                    Query                    query = new Query();
+                    QueryBuildDataSource     qbdsCh, qbdsTm;
+
+                
+                    qbdsCh = query.addDataSource(tableNum(RetailChannelTable));
+                    qbdsCh.addRange(fieldNum(RetailChannelTable, DefaultCustAccount))
+     .value(queryValue(storesId));
+
+                 
+                    qbdsTm = qbdsCh.addDataSource(tableNum(RetailTerminalTable));
+                    qbdsTm.relations(false);
+                    qbdsTm.joinMode(JoinMode::InnerJoin);
+                    qbdsTm.addLink(
+    fieldNum(RetailChannelTable, RECID),
+    fieldNum(RetailTerminalTable, EFTSTORERECID)
+);
+
+                    QueryRun qr = new QueryRun(query);
+                    while (qr.next())
+                    {
+                        RetailChannelTable   channel = qr.get(tableNum(RetailChannelTable));
+                        RetailTerminalTable  terminalTable = qr.get(tableNum(RetailTerminalTable));
+                        terminalList.addEnd(terminalTable.name);
+                    }
+
+
+                }
+                store_iterator.next();
+            }
+            controller.parmArgs(args);
+            controller.parmReportName(ssrsReportStr(CFZDailyCashAccountig, Report2));
+
+
+            contract.parmFromDate(fromDate);
+            contract.parmToDate(toDate);
+
+            contract.parmStoreId(stores);
+            contract.parmTerminalId(terminalList);
+            
+            controller.parmShowDialog(false);
+            controller.parmLoadFromSysLastValue(false);
+            //   controller.preRunModifyContract(); not running instead used below line
+            controller.parmReportContract().parmRdpContract(contract);
+            settings = controller.parmReportContract().parmPrintSettings();
+            settings.printMediumType(SRSPrintMediumType::File);
+            settings.fileName(fileName);
+            settings.fileFormat(SRSReportFileFormat::PDF);
+
+            controller.parmReportContract().parmReportServerConfig(SRSConfiguration::getDefaultServerConfiguration());
+            controller.parmReportContract().parmReportExecutionInfo(executionInfo);
+
+            srsReportRunService.getReportDataContract(controller.parmReportContract().parmReportName());
+            srsReportRunService.preRunReport(controller.parmReportContract());
+            reportParametersMap = srsReportRunService.createParamMapFromContract(controller.parmReportContract());
+            parameterValueArray = SrsReportRunUtil::getParameterValueArray(reportParametersMap);
+
+            srsProxy = SRSProxy::constructWithConfiguration(controller.parmReportContract().parmReportServerConfig());
+            reportBytes = srsProxy.renderReportToByteArray(
+                controller.parmReportContract().parmReportPath(),
+                parameterValueArray,
+                settings.fileFormat(),
+                settings.deviceInfo());
+
+            // Write the generated report to the MemoryStream
+            if (reportBytes)
+            {
+                stream.write(reportBytes, 0, reportBytes.Length);
+                // Reset position to beginning so consumer can read from start
+               
+            }
+        }
+        
+        return stream;
+    }
+
+    [
+        AifCollectionTypeAttribute('company',Types::String),
+        AifCollectionTypeAttribute('exportType',Types::String),
+        AifCollectionTypeAttribute('fromDate',Types::Date),
+        AifCollectionTypeAttribute('toDate',Types::Date),
+        AifCollectionTypeAttribute('stores', Types::AnyType),
+        AifCollectionTypeAttribute('brand', Types::AnyType),
+        AifCollectionTypeAttribute('department', Types::AnyType),
+        AifCollectionTypeAttribute('season', Types::AnyType),
+        AifCollectionTypeAttribute('category', Types::AnyType),
+        AifCollectionTypeAttribute('return', Types::AnyType)
+        ]
+        public System.IO.MemoryStream getDetailedSalesReport(str company,str exportType,TransDate fromDate,TransDate toDate,
+        List stores,List brand,List department,List season,List category
+        )
+    {
+        System.IO.MemoryStream stream=new System.IO.MemoryStream();
+        changecompany(company)
+        {
+            Args args;
+            Filename fileName;
+            SrsReportRunController controller=new SrsReportRunController();
+            CFZDetailedSaleReportContract contract=new CFZDetailedSaleReportContract();
+            SRSPrintDestinationSettings settings;
+            System.Byte[] reportBytes=new System.Byte[0]();
+            SRSProxy srsProxy;
+            SrsReportRunService srsReportRunService=new SrsReportRunService();
+            Microsoft.Dynamics.AX.Framework.Reporting.Shared.ReportingService.ParameterValue[] parameterValueArray;
+            Map reportParametersMap;
+            SRSReportExecutionInfo executionInfo=new SRSReportExecutionInfo();
+            args = new Args();
+            
+            controller.parmArgs(args);
+            controller.parmReportName(ssrsReportStr(CFZDetailedSaleReport,Report));
+            contract.parmFromDate(fromDate);
+            contract.parmToDate(toDate);
+            contract.parmStoreId(stores);
+            contract.parmHierLevel1(brand);
+            contract.parmhierLevel2(department);
+            contract.parmhierLevel3(season);
+            contract.parmhierLevel4(category);
+            controller.parmShowDialog(false);
+            controller.parmLoadFromSysLastValue(false);
+            controller.parmReportContract().parmRdpContract(contract);
+            settings=controller.parmReportContract().parmPrintSettings();
+            settings.printMediumType(SRSPrintMediumType::File);
+            if (exportType=='excel')
+            {
+                fileName ='Detailed_sales_report.xlsx';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::Excel);
+            }
+            else if(exportType=='csv')
+            {
+                fileName ='Detailed_sales_report.csv';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::CSV);
+            }
+            else if(exportType=='pdf')
+            {
+                fileName ='Detailed_sales_report.pdf';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::PDF);
+            }
+            else if(exportType=='xml')
+            {
+                fileName ='Detailed_sales_report.xml';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::XML);
+            }
+            else if(exportType=='html')
+            {
+                fileName ='Detailed_sales_report.html';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::HTML4_0);
+            }
+            else
+            {
+                fileName ='Detailed_sales_report.csv';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::CSV);
+            }
+            controller.parmReportContract().parmReportServerConfig(SRSConfiguration::getDefaultServerConfiguration());
+            controller.parmReportContract().parmReportExecutionInfo(executionInfo);
+            srsReportRunService.getReportDataContract(controller.parmReportContract().parmReportName());
+            srsReportRunService.preRunReport(controller.parmReportContract());
+            reportParametersMap=srsReportRunService.createParamMapFromContract(controller.parmReportContract());
+            parameterValueArray=SrsReportRunUtil::getParameterValueArray(reportParametersMap);
+
+            srsProxy = SRSProxy::constructWithConfiguration(controller.parmReportContract().parmReportServerConfig());
+            reportBytes=srsProxy.renderReportToByteArray(
+                controller.parmReportContract().parmReportPath(),parameterValueArray,settings.fileFormat(),settings.deviceInfo()
+                );
+            if(reportBytes)
+            {
+                stream.Write(reportBytes,0,reportBytes.Length);
+            }
+
+        }
+        return stream;
+    }
+
+    [
+        AifCollectionTypeAttribute('company',Types::String),
+        AifCollectionTypeAttribute('exportType',Types::String),
+        AifCollectionTypeAttribute('warehouse', Types::AnyType),
+        AifCollectionTypeAttribute('site', Types::AnyType),
+        AifCollectionTypeAttribute('brand', Types::AnyType),
+        AifCollectionTypeAttribute('department', Types::AnyType),
+        AifCollectionTypeAttribute('season', Types::AnyType),
+        AifCollectionTypeAttribute('category', Types::AnyType),
+        AifCollectionTypeAttribute('item', Types::String),
+        AifCollectionTypeAttribute('return', Types::AnyType)
+        ]
+        public System.IO.MemoryStream getStockOnHandStore(str company,str exportType,
+        List site, List warehouse,List brand,List department,List season,List category,str item
+        )
+    {
+        System.IO.MemoryStream stream=new System.IO.MemoryStream();
+        changecompany(company)
+        {
+            Args args;
+            Filename fileName;
+            SrsReportRunController controller=new SrsReportRunController();
+            CFZStockOnHandContract contract=new CFZStockOnHandContract();
+            SRSPrintDestinationSettings settings;
+            System.Byte[] reportBytes=new System.Byte[0]();
+            SRSProxy srsProxy;
+            SrsReportRunService srsReportRunService=new SrsReportRunService();
+            Microsoft.Dynamics.AX.Framework.Reporting.Shared.ReportingService.ParameterValue[] parameterValueArray;
+            Map reportParametersMap;
+            SRSReportExecutionInfo executionInfo=new SRSReportExecutionInfo();
+            InventTransferStatus status;
+            args = new Args();
+            
+            controller.parmArgs(args);
+            controller.parmReportName(ssrsReportStr(CFZStockOnHand,Report_Store));
+       
+            contract.parmSiteId(site);
+            contract.parmInventLocationId(warehouse);
+            contract.parmHierLevel1(brand);
+            contract.parmhierLevel2(department);
+            contract.parmhierLevel3(season);
+            contract.parmhierLevel4(category);
+            contract.parmItemText(item);
+            controller.parmShowDialog(false);
+            controller.parmLoadFromSysLastValue(false);
+            controller.parmReportContract().parmRdpContract(contract);
+            settings=controller.parmReportContract().parmPrintSettings();
+            settings.printMediumType(SRSPrintMediumType::File);
+            if (exportType=='excel')
+            {
+                fileName ='Stock_On_Hand_Store.xlsx';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::Excel);
+            }
+            else if(exportType=='csv')
+            {
+                fileName ='Stock_On_Hand_Store.csv';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::CSV);
+            }
+            else if(exportType=='pdf')
+            {
+                fileName ='Stock_On_Hand_Store.pdf';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::PDF);
+            }
+            else if(exportType=='xml')
+            {
+                fileName ='Stock_On_Hand_Store.xml';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::XML);
+            }
+            else if(exportType=='html')
+            {
+                fileName ='Stock_On_Hand_Store.html';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::HTML4_0);
+            }
+            else
+            {
+                fileName ='Stock_On_Hand_Store.csv';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::CSV);
+            }
+            controller.parmReportContract().parmReportServerConfig(SRSConfiguration::getDefaultServerConfiguration());
+            controller.parmReportContract().parmReportExecutionInfo(executionInfo);
+            srsReportRunService.getReportDataContract(controller.parmReportContract().parmReportName());
+            srsReportRunService.preRunReport(controller.parmReportContract());
+            reportParametersMap=srsReportRunService.createParamMapFromContract(controller.parmReportContract());
+            parameterValueArray=SrsReportRunUtil::getParameterValueArray(reportParametersMap);
+
+            srsProxy = SRSProxy::constructWithConfiguration(controller.parmReportContract().parmReportServerConfig());
+            reportBytes=srsProxy.renderReportToByteArray(
+                controller.parmReportContract().parmReportPath(),parameterValueArray,settings.fileFormat(),settings.deviceInfo()
+                );
+            if(reportBytes)
+            {
+                stream.Write(reportBytes,0,reportBytes.Length);
+            }
+
+        }
+        return stream;
+    }
+
+    [
+            AifCollectionTypeAttribute('fromDate',Types::Date),
+        AifCollectionTypeAttribute('toDate',Types::Date),
+        AifCollectionTypeAttribute('company',Types::String),
+        AifCollectionTypeAttribute('exportType',Types::String),
+        AifCollectionTypeAttribute('from_warehouse', Types::AnyType),
+        AifCollectionTypeAttribute('to_warehouse', Types::AnyType),
+        AifCollectionTypeAttribute('transferIds', Types::AnyType),
+        AifCollectionTypeAttribute('transferStatus', Types::String),
+        AifCollectionTypeAttribute('site', Types::AnyType),
+
+        AifCollectionTypeAttribute('return', Types::AnyType)
+        ]
+        public System.IO.MemoryStream getStockTransferOrderStatus(str company,str exportType,str transferStatus,
+        List site, List from_warehouse,List to_warehouse,TransDate fromDate,TransDate toDate,List transferIds
+        )
+    {
+        System.IO.MemoryStream stream=new System.IO.MemoryStream();
+        changecompany(company)
+        {
+            ListEnumerator  enum;
+            Args args;
+            Filename fileName;
+            SrsReportRunController controller=new SrsReportRunController();
+            CFZStockTransferOrderStatusContract contract=new CFZStockTransferOrderStatusContract();
+            SRSPrintDestinationSettings settings;
+            System.Byte[] reportBytes=new System.Byte[0]();
+            SRSProxy srsProxy;
+            SrsReportRunService srsReportRunService=new SrsReportRunService();
+            Microsoft.Dynamics.AX.Framework.Reporting.Shared.ReportingService.ParameterValue[] parameterValueArray;
+            Map reportParametersMap;
+            SRSReportExecutionInfo executionInfo=new SRSReportExecutionInfo();
+            List                    transferOrderList        = new List(Types::String);
+            InventTransferTable     invTransRec;
+            args = new Args();
+            utcdatetime fDateTime,TDateTime;
+            InventTransferStatus status;
+            
+            controller.parmArgs(args);
+            controller.parmReportName(ssrsReportStr(CFZStockTransferOrderStatus,Report));
+            ////////
+            ListEnumerator enumerator;
+            List locationIdList = new List(Types::String);
+            enumerator=from_warehouse.getEnumerator();
+            if(enumerator.moveNext())
+            {
+                if(enumerator.current()!='All' )
+                {
+                    locationIdList=from_warehouse;
+                }
+                else
+                {
+                    Query query1 = new Query();
+                    QueryBuildDataSource qbds;
+                    QueryRun queryRun;
+                    InventLocation inventLocation;
+
+                    // Build query
+                    qbds = query1.addDataSource(tableNum(InventLocation));
+                    qbds.addSelectionField(fieldNum(InventLocation, InventLocationId));
+                    qbds.addSelectionField(fieldNum(InventLocation, Name));
+                    qbds.addRange(fieldNum(InventLocation, InventLocationType)).value(SysQuery::value(0));
+
+                    // Execute query
+                    queryRun = new QueryRun(query1);
+
+                    while (queryRun.next())
+                    {
+                        inventLocation = queryRun.get(tableNum(InventLocation));
+                        locationIdList.addEnd(inventLocation.InventLocationId);
+                    }
+                }
+            }
+            if(transferStatus=='created')
+            {
+                status=InventTransferStatus::Created;
+                contract.parmTransferStatus(status);
+                
+            }
+            else if(transferStatus=='shipped')
+            {
+                
+                status=InventTransferStatus::Shipped;
+                contract.parmTransferStatus(status);
+            }
+            else if(transferStatus=='received')
+            {
+                
+                status=InventTransferStatus::Received;
+                contract.parmTransferStatus(status);
+            }
+            else
+            {
+                
+                status=InventTransferStatus::Created;
+                contract.parmTransferStatus(status);
+            }
+            ListEnumerator enumerator1;
+            enumerator1=transferIds.getEnumerator();
+            if(enumerator1.moveNext())
+            {
+                if(enumerator1.current()!='All')
+                {
+                    transferOrderList=transferIds;
+                }
+                else
+                {
+                    Query           query = new query();
+                    QueryBuildDataSource    qbdsInventTransferTable,qbdsinventtrnasferjournal;
+                    qbdsInventTransferTable = query.addDataSource(tableNum(InventTransferTable), identifierstr(InventTransferTable_1));
+                    if(status == InventTransferStatus::Received || status == InventTransferStatus::Shipped)
+                    {
+                        qbdsinventtrnasferjournal = qbdsInventTransferTable.addDataSource(tableNum(InventTransferJour));
+                        qbdsinventtrnasferjournal.joinMode(JoinMode::InnerJoin);
+                        qbdsinventtrnasferjournal.relations(true);
+                    }
+
+                    enum = locationIdList.getEnumerator();
+
+                    while (enum.moveNext())
+                    {
+                        qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, InventLocationIdFrom)).value(SysQuery::value(enum.current()));
+                    }
+                    enum = to_warehouse.getEnumerator();
+
+                    while (enum.moveNext())
+                    {
+                        qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, InventLocationIdTo)).value(SysQuery::value(enum.current()));
+                    }
+                    if(status == InventTransferStatus::Created || status == InventTransferStatus::Received || status == InventTransferStatus::Shipped)
+                    {
+                        qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, TransferStatus)).value(SysQuery::value(status));
+                    }
+
+                    if (fromDate && toDate)
+                    {
+                        fDateTime = DateTimeUtil::newDateTime(fromDate,DateTimeUtil::time(DateTimeUtil::minValue()));
+                        TDateTime = DateTimeUtil::newDateTime(toDate,DateTimeUtil::time(DateTimeUtil::maxValue()));
+                        iF(status == InventTransferStatus::Created)
+                        {
+                            qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, CreatedDateTime)).value(queryRange(fromDate, toDate));
+                        }
+                        else if(status == InventTransferStatus::Shipped)
+                        {
+
+                            qbdsinventtrnasferjournal.addRange(fieldNum(InventTransferJour, Transdate)).value(queryRange(fromDate,toDate));
+                            qbdsinventtrnasferjournal.addRange(fieldNum(InventTransferJour, UpdateType)).value(sysquery::value(0));
+
+                        }
+                        else if(status == InventTransferStatus::Received)
+                        {
+                            qbdsinventtrnasferjournal.addRange(fieldNum(InventTransferJour, Transdate)).value(queryRange(fromDate,toDate));
+                            qbdsinventtrnasferjournal.addRange(fieldNum(InventTransferJour, UpdateType)).value(sysquery::value(1));
+                        }
+
+                    }
+                    qbdsInventTransferTable.fields().dynamic(false);
+                    qbdsInventTransferTable.fields().clearFieldList();
+
+                    if(status == InventTransferStatus::Received || status == InventTransferStatus::Shipped)
+                    {
+                        qbdsinventtrnasferjournal.fields().dynamic(false);
+                        qbdsinventtrnasferjournal.fields().clearFieldList();
+                    }
+
+                    qbdsInventTransferTable.addGroupByField(fieldnum(InventTransferTable, TransferId));
+                    QueryRun                qr;
+                    qr = new QueryRun(query);
+                    while (qr.next())
+                    {
+                        invTransRec = qr.get(tableNum(InventTransferTable));
+                        transferOrderList.addEnd(invTransRec.TransferId);
+                    }
+
+                }
+            }
+            
+            if(transferOrderList.empty())
+            {
+                transferOrderList.addStart("TO-00000000");
+            }
+            contract.parmTransferId(transferOrderList);
+            ///////
+            contract.parmSiteId(site);
+            contract.parmFromLocation(locationIdList);
+            contract.parmToLocation(to_warehouse);
+            contract.parmFromDate(fromDate);
+            contract.parmToDate(toDate);
+
+            //////////
+            
+
+            
+            /////////
+
+
+
+            controller.parmShowDialog(false);
+            controller.parmLoadFromSysLastValue(false);
+            controller.parmReportContract().parmRdpContract(contract);
+            settings=controller.parmReportContract().parmPrintSettings();
+            settings.printMediumType(SRSPrintMediumType::File);
+            if (exportType=='excel')
+            {
+                fileName ='Stock_Transfer_Order_Status.xlsx';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::Excel);
+            }
+            else if(exportType=='csv')
+            {
+                fileName ='Stock_Transfer_Order_Status.csv';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::CSV);
+            }
+            else if(exportType=='pdf')
+            {
+                fileName ='Stock_Transfer_Order_Status.pdf';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::PDF);
+            }
+            else if(exportType=='xml')
+            {
+                fileName ='Stock_Transfer_Order_Status.xml';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::XML);
+            }
+            else if(exportType=='html')
+            {
+                fileName ='Stock_Transfer_Order_Status.html';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::HTML4_0);
+            } 
+            else
+            {
+                fileName ='Stock_Transfer_Order_Status.csv';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::CSV);
+            }
+            controller.parmReportContract().parmReportServerConfig(SRSConfiguration::getDefaultServerConfiguration());
+            controller.parmReportContract().parmReportExecutionInfo(executionInfo);
+            srsReportRunService.getReportDataContract(controller.parmReportContract().parmReportName());
+            srsReportRunService.preRunReport(controller.parmReportContract());
+            reportParametersMap=srsReportRunService.createParamMapFromContract(controller.parmReportContract());
+            parameterValueArray=SrsReportRunUtil::getParameterValueArray(reportParametersMap);
+
+            srsProxy = SRSProxy::constructWithConfiguration(controller.parmReportContract().parmReportServerConfig());
+            reportBytes=srsProxy.renderReportToByteArray(
+                controller.parmReportContract().parmReportPath(),parameterValueArray,settings.fileFormat(),settings.deviceInfo()
+                );
+            if(reportBytes)
+            {
+                stream.Write(reportBytes,0,reportBytes.Length);
+            }
+
+        }
+        return stream;
+    }
+
+    [
+            AifCollectionTypeAttribute('fromDate',Types::Date),
+        AifCollectionTypeAttribute('toDate',Types::Date),
+        AifCollectionTypeAttribute('company',Types::String),
+        AifCollectionTypeAttribute('exportType',Types::String),
+        AifCollectionTypeAttribute('fromWarehouse', Types::AnyType),
+        AifCollectionTypeAttribute('toWarehouse', Types::AnyType),
+        AifCollectionTypeAttribute('transferIds', Types::AnyType),
+        AifCollectionTypeAttribute('transferStatus', Types::String),
+   
+
+        AifCollectionTypeAttribute('return', Types::AnyType)
+        ]
+        public System.IO.MemoryStream getTransferOutReport(str company,str exportType,str transferStatus,
+       List fromWarehouse,List toWarehouse,TransDate fromDate,TransDate toDate,List transferIds
+        )
+    {
+        System.IO.MemoryStream stream=new System.IO.MemoryStream();
+        changecompany(company)
+        {
+            ListEnumerator  enum;
+            Args args;
+            Filename fileName;
+            SrsReportRunController controller=new SrsReportRunController();
+            CFZTransferOutContract contract=new CFZTransferOutContract();
+            SRSPrintDestinationSettings settings;
+            System.Byte[] reportBytes=new System.Byte[0]();
+            SRSProxy srsProxy;
+            SrsReportRunService srsReportRunService=new SrsReportRunService();
+            Microsoft.Dynamics.AX.Framework.Reporting.Shared.ReportingService.ParameterValue[] parameterValueArray;
+            Map reportParametersMap;
+            SRSReportExecutionInfo executionInfo=new SRSReportExecutionInfo();
+            List                    transferOrderList        = new List(Types::String);
+            InventTransferTable     invTransRec;
+            args = new Args();
+            utcdatetime fDateTime,TDateTime;
+            InventTransferStatus status;
+            
+            controller.parmArgs(args);
+            controller.parmReportName(ssrsReportStr(CFZTransOutReport,Report));
+            ////////
+            ListEnumerator enumerator;
+            List locationIdList = new List(Types::String);
+            enumerator=fromWarehouse.getEnumerator();
+            if(enumerator.moveNext())
+            {
+                if(enumerator.current()!='All' )
+                {
+                    locationIdList=fromWarehouse;
+                }
+                else
+                {
+                    Query query1 = new Query();
+                    QueryBuildDataSource qbds;
+                    QueryRun queryRun;
+                    InventLocation inventLocation;
+
+                    // Build query
+                    qbds = query1.addDataSource(tableNum(InventLocation));
+                    qbds.addSelectionField(fieldNum(InventLocation, InventLocationId));
+                    qbds.addSelectionField(fieldNum(InventLocation, Name));
+                    qbds.addRange(fieldNum(InventLocation, InventLocationType)).value(SysQuery::value(0));
+
+                    // Execute query
+                    queryRun = new QueryRun(query1);
+
+                    while (queryRun.next())
+                    {
+                        inventLocation = queryRun.get(tableNum(InventLocation));
+                        locationIdList.addEnd(inventLocation.InventLocationId);
+                    }
+                }
+            }
+            if(transferStatus=='created')
+            {
+                status=InventTransferStatus::Created;
+                contract.parmTransferStatus(status);
+                
+            }
+            else if(transferStatus=='shipped')
+            {
+                
+                status=InventTransferStatus::Shipped;
+                contract.parmTransferStatus(status);
+            }
+            else if(transferStatus=='received')
+            {
+                
+                status=InventTransferStatus::Received;
+                contract.parmTransferStatus(status);
+            }
+            else
+            {
+                
+                status=InventTransferStatus::Created;
+                contract.parmTransferStatus(status);
+            }
+            ListEnumerator enumerator1;
+            enumerator1=transferIds.getEnumerator();
+            if(enumerator1.moveNext())
+            {
+                if(enumerator1.current()!='All')
+                {
+                    transferOrderList=transferIds;
+                }
+                else
+                {
+                    Query           query = new query();
+                    QueryBuildDataSource    qbdsInventTransferTable,qbdsinventtrnasferjournal;
+                    qbdsInventTransferTable = query.addDataSource(tableNum(InventTransferTable), identifierstr(InventTransferTable_1));
+                    if(status == InventTransferStatus::Received || status == InventTransferStatus::Shipped)
+                    {
+                        qbdsinventtrnasferjournal = qbdsInventTransferTable.addDataSource(tableNum(InventTransferJour));
+                        qbdsinventtrnasferjournal.joinMode(JoinMode::InnerJoin);
+                        qbdsinventtrnasferjournal.relations(true);
+                    }
+
+                    enum = locationIdList.getEnumerator();
+
+                    while (enum.moveNext())
+                    {
+                        qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, InventLocationIdFrom)).value(SysQuery::value(enum.current()));
+                    }
+                    enum = toWarehouse.getEnumerator();
+
+                    while (enum.moveNext())
+                    {
+                        qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, InventLocationIdTo)).value(SysQuery::value(enum.current()));
+                    }
+                    if(status == InventTransferStatus::Created || status == InventTransferStatus::Received || status == InventTransferStatus::Shipped)
+                    {
+                        qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, TransferStatus)).value(SysQuery::value(status));
+                    }
+
+                    if (fromDate && toDate)
+                    {
+                        fDateTime = DateTimeUtil::newDateTime(fromDate,DateTimeUtil::time(DateTimeUtil::minValue()));
+                        TDateTime = DateTimeUtil::newDateTime(toDate,DateTimeUtil::time(DateTimeUtil::maxValue()));
+                        iF(status == InventTransferStatus::Created)
+                        {
+                            qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, CreatedDateTime)).value(queryRange(fromDate, toDate));
+                        }
+                        else if(status == InventTransferStatus::Shipped)
+                        {
+
+                            qbdsinventtrnasferjournal.addRange(fieldNum(InventTransferJour, Transdate)).value(queryRange(fromDate,toDate));
+                            qbdsinventtrnasferjournal.addRange(fieldNum(InventTransferJour, UpdateType)).value(sysquery::value(0));
+
+                        }
+                        else if(status == InventTransferStatus::Received)
+                        {
+                            qbdsinventtrnasferjournal.addRange(fieldNum(InventTransferJour, Transdate)).value(queryRange(fromDate,toDate));
+                            qbdsinventtrnasferjournal.addRange(fieldNum(InventTransferJour, UpdateType)).value(sysquery::value(1));
+                        }
+
+                    }
+                    qbdsInventTransferTable.fields().dynamic(false);
+                    qbdsInventTransferTable.fields().clearFieldList();
+
+                    if(status == InventTransferStatus::Received || status == InventTransferStatus::Shipped)
+                    {
+                        qbdsinventtrnasferjournal.fields().dynamic(false);
+                        qbdsinventtrnasferjournal.fields().clearFieldList();
+                    }
+
+                    qbdsInventTransferTable.addGroupByField(fieldnum(InventTransferTable, TransferId));
+                    QueryRun                qr;
+                    qr = new QueryRun(query);
+                    while (qr.next())
+                    {
+                        invTransRec = qr.get(tableNum(InventTransferTable));
+                        transferOrderList.addEnd(invTransRec.TransferId);
+                    }
+
+                }
+            }
+            
+            if(transferOrderList.empty())
+            {
+                transferOrderList.addStart("TO-00000000");
+            }
+            contract.parmTransferOrderNumbers(transferOrderList);
+            ///////
+            
+            contract.parmWareHouseFrom(locationIdList);
+            contract.parmWareHouseTo(toWarehouse);
+            contract.parmFromDate(fromDate);
+            contract.parmToDate(toDate);
+
+            //////////
+            
+
+            
+            /////////
+
+
+
+            controller.parmShowDialog(false);
+            controller.parmLoadFromSysLastValue(false);
+            controller.parmReportContract().parmRdpContract(contract);
+            settings=controller.parmReportContract().parmPrintSettings();
+            settings.printMediumType(SRSPrintMediumType::File);
+            if (exportType=='excel')
+            {
+                fileName ='Transfer_Out_Report.xlsx';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::Excel);
+            }
+            else if(exportType=='csv')
+            {
+                fileName ='Transfer_Out_Report.csv';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::CSV);
+            }
+            else if(exportType=='pdf')
+            {
+                fileName ='Transfer_Out_Report.pdf';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::PDF);
+            }
+            else if(exportType=='xml')
+            {
+                fileName ='Transfer_Out_Report.xml';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::XML);
+            }
+            else if(exportType=='html')
+            {
+                fileName ='Transfer_Out_Report.html';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::HTML4_0);
+            }
+            else
+            {
+                fileName ='Stock_Transfer_Order_Status.csv';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::CSV);
+            }
+            controller.parmReportContract().parmReportServerConfig(SRSConfiguration::getDefaultServerConfiguration());
+            controller.parmReportContract().parmReportExecutionInfo(executionInfo);
+            srsReportRunService.getReportDataContract(controller.parmReportContract().parmReportName());
+            srsReportRunService.preRunReport(controller.parmReportContract());
+            reportParametersMap=srsReportRunService.createParamMapFromContract(controller.parmReportContract());
+            parameterValueArray=SrsReportRunUtil::getParameterValueArray(reportParametersMap);
+
+            srsProxy = SRSProxy::constructWithConfiguration(controller.parmReportContract().parmReportServerConfig());
+            reportBytes=srsProxy.renderReportToByteArray(
+                controller.parmReportContract().parmReportPath(),parameterValueArray,settings.fileFormat(),settings.deviceInfo()
+                );
+            if(reportBytes)
+            {
+                stream.Write(reportBytes,0,reportBytes.Length);
+            }
+
+        }
+        return stream;
+    }
+
+    [
+            AifCollectionTypeAttribute('fromDate',Types::Date),
+        AifCollectionTypeAttribute('toDate',Types::Date),
+        AifCollectionTypeAttribute('company',Types::String),
+        AifCollectionTypeAttribute('exportType',Types::String),
+        AifCollectionTypeAttribute('fromWarehouse', Types::AnyType),
+        AifCollectionTypeAttribute('toWarehouse', Types::AnyType),
+        AifCollectionTypeAttribute('transferIds', Types::AnyType),
+         AifCollectionTypeAttribute('item', Types::String),
+        AifCollectionTypeAttribute('return', Types::AnyType)
+        ]
+        public System.IO.MemoryStream getTransferOrderDispatchVouchers(str company,str exportType,
+       List fromWarehouse,List toWarehouse,TransDate fromDate,TransDate toDate,List transferIds,str item
+        )
+    {
+        System.IO.MemoryStream stream=new System.IO.MemoryStream();
+        changecompany(company)
+        {
+            ListEnumerator  enum,enum1;
+            Args args;
+            Filename fileName;
+            SrsReportRunController controller=new SrsReportRunController();
+            CFZTransferOrderDispatchContract contract=new CFZTransferOrderDispatchContract();
+            SRSPrintDestinationSettings settings;
+            System.Byte[] reportBytes=new System.Byte[0]();
+            SRSProxy srsProxy;
+            SrsReportRunService srsReportRunService=new SrsReportRunService();
+            Microsoft.Dynamics.AX.Framework.Reporting.Shared.ReportingService.ParameterValue[] parameterValueArray;
+            Map reportParametersMap;
+            SRSReportExecutionInfo executionInfo=new SRSReportExecutionInfo();
+            List                    transferOrderList        = new List(Types::String);
+            InventTransferTable     invTransRec;
+            args = new Args();
+            utcdatetime fDateTime,TDateTime;
+            
+            controller.parmArgs(args);
+            controller.parmReportName(ssrsReportStr(CFZTransferOrderReport,Report));
+            ////////
+            ListEnumerator enumerator;
+            List locationIdList = new List(Types::String);
+            enumerator=toWarehouse.getEnumerator();
+            if(enumerator.moveNext())
+            {
+                if(enumerator.current()!='All' )
+                {
+                    locationIdList=toWarehouse;
+                }
+                else
+                {
+                    Query query1 = new Query();
+                    QueryBuildDataSource qbds;
+                    QueryRun queryRun;
+                    InventLocation inventLocation;
+
+                    // Build query
+                    qbds = query1.addDataSource(tableNum(InventLocation));
+                    qbds.addSelectionField(fieldNum(InventLocation, InventLocationId));
+                    qbds.addSelectionField(fieldNum(InventLocation, Name));
+                    qbds.addRange(fieldNum(InventLocation, InventLocationType)).value(SysQuery::value(0));
+
+                    // Execute query
+                    queryRun = new QueryRun(query1);
+
+                    while (queryRun.next())
+                    {
+                        inventLocation = queryRun.get(tableNum(InventLocation));
+                        locationIdList.addEnd(inventLocation.InventLocationId);
+                    }
+                }
+            }
+
+            ListEnumerator enumerator1;
+            enumerator1=transferIds.getEnumerator();
+            if(enumerator1.moveNext())
+            {
+                if(enumerator1.current()!='All')
+                {
+                    transferOrderList=transferIds;
+                }
+                else
+                {
+                    Query           query = new query();
+                    QueryBuildDataSource    qbdsInventTransferTable,qbdsinventtrnasferjournal;
+                    qbdsInventTransferTable = query.addDataSource(tableNum(InventTransferTable));
+                    qbdsinventtrnasferjournal = qbdsInventTransferTable.addDataSource(tableNum(InventTransferJour));
+                    qbdsinventtrnasferjournal.joinMode(JoinMode::InnerJoin);
+                    qbdsinventtrnasferjournal.relations(true);
+
+                    if (fromWarehouse)
+                    {
+                        enum1 = fromWarehouse.getEnumerator();
+
+                        while (enum1.moveNext())
+                        {
+                            qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, InventLocationIdFrom )).value(enum1.current());
+                        }
+                    }
+
+                    if (locationIdList)
+                    {
+                        enum = locationIdList.getEnumerator();
+
+                        while (enum.moveNext())
+                        {
+                            qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, InventLocationIdTo)).value(enum.current());
+                        }
+                    }
+                    if (fromDate && toDate)
+                    {
+                        //fDateTime = Global::datetobeginUtcDateTime(FromDateRange,Timezone);
+                        //TDateTime = Global::datetobeginUtcDateTime(ToDateRange, Timezone);
+                        //qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, SHIPDATE)).value(queryRange(fDateTime, TDateTime));
+                        qbdsinventtrnasferjournal.addRange(fieldNum(InventTransferJour, Transdate)).value(queryRange(fromDate,toDate));
+                        qbdsinventtrnasferjournal.addRange(fieldNum(InventTransferJour, UpdateType)).value(sysquery::value(0));
+
+                        qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, TransferStatus)).value
+                (sysquery::value(1));
+                  //      qbdsInventTransferTable.addRange(fieldNum(InventTransferTable, TransferStatus)).value
+            //    (sysquery::value(2));
+                    }
+
+                    qbdsInventTransferTable.fields().dynamic(false);
+                    qbdsInventTransferTable.fields().clearFieldList();
+                    qbdsinventtrnasferjournal.fields().dynamic(false);
+                    qbdsinventtrnasferjournal.fields().clearFieldList();
+
+                    qbdsInventTransferTable.addGroupByField(fieldnum(InventTransferTable, TransferId));
+                    QueryRun                qr;
+                    qr = new QueryRun(query);
+                    while (qr.next())
+                    {
+                        invTransRec = qr.get(tableNum(InventTransferTable));
+                        transferOrderList.addEnd(invTransRec.TransferId);
+                    }
+
+                }
+            }
+            
+            if(transferOrderList.empty())
+            {
+                transferOrderList.addStart("TO-00000000");
+            }
+            contract.parmTransferOrderNumbers(transferOrderList);
+            ///////
+            
+            contract.parmWareHouseFrom(fromWarehouse);
+            contract.parmWareHouseTo(locationIdList);
+            contract.parmFromDate(fromDate);
+            contract.parmToDate(toDate);
+            contract.parmItemText(item);
+            //////////
+            
+
+            
+            /////////
+
+
+
+            controller.parmShowDialog(false);
+            controller.parmLoadFromSysLastValue(false);
+            controller.parmReportContract().parmRdpContract(contract);
+            settings=controller.parmReportContract().parmPrintSettings();
+            settings.printMediumType(SRSPrintMediumType::File);
+            if (exportType=='excel')
+            {
+                fileName ='Dispatch_Voucher_Report.xlsx';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::Excel);
+            }
+            else if(exportType=='csv')
+            {
+                fileName ='Dispatch_Voucher_Report.csv';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::CSV);
+            }
+            else if(exportType=='pdf')
+            {
+                fileName ='Dispatch_Voucher_Report.pdf';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::PDF);
+            }
+            else if(exportType=='xml')
+            {
+                fileName ='Dispatch_Voucher_Report.xml';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::XML);
+            }
+            else if(exportType=='html')
+            {
+                fileName ='Dispatch_Voucher_Report.html';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::HTML4_0);
+            }
+            else
+            {
+                fileName ='Dispatch_Voucher_Report.csv';
+                settings.fileName(fileName);
+                settings.fileFormat(SRSReportFileFormat::CSV);
+            }
+            controller.parmReportContract().parmReportServerConfig(SRSConfiguration::getDefaultServerConfiguration());
+            controller.parmReportContract().parmReportExecutionInfo(executionInfo);
+            srsReportRunService.getReportDataContract(controller.parmReportContract().parmReportName());
+            srsReportRunService.preRunReport(controller.parmReportContract());
+            reportParametersMap=srsReportRunService.createParamMapFromContract(controller.parmReportContract());
+            parameterValueArray=SrsReportRunUtil::getParameterValueArray(reportParametersMap);
+
+            srsProxy = SRSProxy::constructWithConfiguration(controller.parmReportContract().parmReportServerConfig());
+            reportBytes=srsProxy.renderReportToByteArray(
+                controller.parmReportContract().parmReportPath(),parameterValueArray,settings.fileFormat(),settings.deviceInfo()
+                );
+            if(reportBytes)
+            {
+                stream.Write(reportBytes,0,reportBytes.Length);
+            }
+
+        }
+        return stream;
+    }
+
+}
